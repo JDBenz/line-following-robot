@@ -11,7 +11,7 @@ int sensorError[] = {3, 2, 1, 0, 0, -1, -2, -3};
 
 // Sensor sampling config
 int t_on = 12; //microseconds (us)
-int t_wait = 90000; //microseconds (us)
+int t_wait = 1000; //microseconds (us)
 
 // Left Motor Pin Declarations
 const int LEFT_PWM = 40;
@@ -24,8 +24,10 @@ const int RIGHT_DIR = 15;
 const int RIGHT_SLP = 11; 
 
 // Variable PWM Values
-int rightPWM = 0;
-int leftPWM = 0; 
+int rightPWM = 30;
+int leftPWM = 30; 
+
+float error = 0;
 
 // Previous Error 
 float previousError = 0;
@@ -39,6 +41,10 @@ int activePinCount = 0;
 void setup(){
   // Set up serial monitor
   Serial.begin(9600);
+
+  delay(15);
+  pinMode(61, OUTPUT);
+  digitalWrite(61, HIGH);
 
   // Set left motor pin modes
   pinMode(LEFT_DIR, OUTPUT); 
@@ -63,10 +69,9 @@ void loop(){
   readSensors();
 
   // Do something based off the sensor reading
-  float error = 0 ;
+  previousError = error;
   error = calculateMotorCorrection(); 
   Serial.println(error);
-
   correctMotors(error);
 }
 
@@ -124,12 +129,12 @@ void readSensors(){
 }
 
 float changeMapping(float input){
-  float output = abs(input)/(2.5) * (40);
+  float output = abs(input)/(2.5) * (150);
   return output; 
 }
 
 float invertedMapping(float input){
-  float output = 2.5/abs(input) * (8);
+  float output = 2.5/abs(input) * (30);
   return output; 
 }
 
@@ -140,9 +145,9 @@ float calculateMotorCorrection(){
   for (int count=0; count<8; count++){
     if (sensorRead[count] == 1){
       sum += sensorError[count];
-//      if (count != 3 && count != 4){
-      activePinCount += 1; 
-//      }
+      if (count != 3 && count != 4){
+        activePinCount += 1; 
+      }
     }
   }
   error = sum / activePinCount;
@@ -150,20 +155,21 @@ float calculateMotorCorrection(){
 }
 
 void correctMotors(float error){
-  errorSlope = (abs(error) - abs(previousError))/2;
-  if (error > 0){
+//  errorSlope = (abs(error) - abs(previousError))/2;
+  if (error > .5){
     leftPWM = changeMapping(error);
     rightPWM = invertedMapping(error); 
-  } else if (error < 0){
+  } else if (error < -.5){
     leftPWM = invertedMapping(error);
     rightPWM = changeMapping(error);
-  } else if (activePinCount == 8){
+  } else if (activePinCount == 6){
     leftPWM = 0;
     rightPWM = 0; 
   } else if (error == 0 && activePinCount != 0){
-    leftPWM = 30;//changeMapping(error);
-    rightPWM = 30;//changeMapping(error); 
+    leftPWM = 50;//changeMapping(error);
+    rightPWM = 50;//changeMapping(error); 
   }
+  
   Serial.print("Left PWM: ");
   Serial.print(leftPWM);
   Serial.println();
